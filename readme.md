@@ -7,7 +7,7 @@ _Note:this repository is in under development some todo works like documentation
 Welcome to the Go Concurrency Patterns repository! This repository is a comprehensive collection of common concurrency patterns and techniques specifically designed for Go programming.
 
 ## Overview
-Concurrency is a core feature of the Go programming language, and understanding how to effectively utilize it is essential for building efficient and scalable systems. This repository aims to provide you with a deep understanding of Go's concurrency primitives and demonstrate how to apply them through various patterns.
+Concurrency is a core feature of the Go programming language, and understanding how to effectively utilize it is essential for building efficient and scalable systems. This repository aims to provide you with a basic understanding of Go's concurrency primitives and demonstrate how to apply them through various patterns.
 
 ## Features
 
