@@ -1,5 +1,7 @@
 <img src="golang.jpg">
 
+_Note:this repository is in under development some todo works like documentation, test cases, some new patterns will add in few days_
+
 # Go Concurrency Patterns
 
 Welcome to the Go Concurrency Patterns repository! This repository is a comprehensive collection of common concurrency patterns and techniques specifically designed for Go programming.
