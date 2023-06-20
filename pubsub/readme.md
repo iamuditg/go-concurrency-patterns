@@ -1,18 +1,24 @@
 # Pub-Sub Concurrency Pattern
 
 ## Description
-The Pub-Sub (Publisher-Subscriber) concurrency pattern is used for decoupling components in a system. Publishers publish events, and subscribers receive and process those events. It allows for a one-to-many relationship between publishers and subscribers, where multiple subscribers can receive events from one or more publishers.
+This repository provides an implementation of the Publish-Subscribe (PubSub) concurrency pattern in Go, along with a Broker component. The PubSub pattern allows for loose coupling between publishers and subscribers, enabling scalable and flexible concurrent systems.
 
-## Implementation
-In this example, we demonstrate the Pub-Sub pattern by implementing a simple publisher and two subscribers. The main steps involved in the implementation are as follows:
+## Subscriber
+The Subscriber struct represents a subscriber that receives messages from the broker. Each subscriber has a unique ID and a channel to receive messages.
 
-1. Create a `Publisher` struct that maintains a map of subscribers.
-2. Create a `Subscriber` struct that contains an event channel for receiving events and a shutdown channel for graceful shutdown.
-3. Implement methods for adding/removing subscribers and publishing events in the `Publisher` struct.
-4. Launch goroutines for each subscriber to receive and process events.
-5. Use channels for communication between the publisher and subscribers.
-6. Publish events by sending them to the event channels of the subscribers.
+## Broker
+The Broker struct serves as the central message broker. It maintains a mapping of topics to subscribers. The broker allows subscribers to subscribe to specific topics and handles the distribution of messages to the appropriate subscribers. It provides methods to subscribe, unsubscribe, and publish messages.
+
+## Message
+The Message struct represents a message published by a publisher. It includes a topic and the actual data of the message.
 
 ## Usage
-To run the example, execute the following command:
-go run pubsub.go
+To use the PubSub concurrency pattern with the Broker component, follow these steps:
+
+1. Create a new instance of the Broker using NewBroker().
+2. Create one or more Subscriber instances and specify their unique IDs and channels for message reception.
+3. Subscribe the subscribers to specific topics using the Subscribe() method of the broker.
+4. Spawn goroutines for each subscriber and invoke their Update() methods to start receiving messages.
+5. Publish messages to the topics of interest using the Publish() method of the broker.
+6. Unsubscribe subscribers from topics when they are no longer interested in receiving messages using the Unsubscribe() method of the broker.
+7. Ensure that all subscriber channels are properly closed when the program finishes executing.

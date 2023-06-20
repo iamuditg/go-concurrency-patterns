@@ -5,114 +5,102 @@ import (
 	"sync"
 )
 
+// Message represents a message published by a publisher
 type Message struct {
-	Content string
+	Topic string
+	Data  interface{}
 }
 
+// Subscriber represents a subscriber that receives messages
 type Subscriber struct {
-	ID     int
-	Events chan Message
-	Done   chan struct{}
+	ID      int
+	Channel chan interface{}
 }
 
-type Publisher struct {
-	Subscribers map[int]Subscriber
-	mu          sync.Mutex
-}
-
-func NewPublisher() *Publisher {
-	return &Publisher{
-		Subscribers: make(map[int]Subscriber),
+// Update receives a message from the broker and handles it
+func (s *Subscriber) Update() {
+	for message := range s.Channel {
+		fmt.Printf("Subscriber %d received message: %v\n", s.ID, message)
 	}
 }
 
-func (p *Publisher) AddSubscriber(subscriber Subscriber) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	p.Subscribers[subscriber.ID] = subscriber
+// Broker represents the central message broker
+type Broker struct {
+	subscribers map[string][]*Subscriber
+	mutex       sync.Mutex
 }
 
-func (p *Publisher) RemoveSubscriber(subscriberID int) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+// NewBroker creates a new instance of the Broker
+func NewBroker() *Broker {
+	return &Broker{
+		subscribers: make(map[string][]*Subscriber),
+	}
+}
 
-	subscriber, ok := p.Subscribers[subscriberID]
+// Subscribe adds a subscriber to a specific topic
+func (b *Broker) Subscribe(topic string, subscriber *Subscriber) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	b.subscribers[topic] = append(b.subscribers[topic], subscriber)
+}
+
+// Unsubscribe removes a subscriber from a specific topic
+func (b *Broker) Unsubscribe(topic string, subscriber *Subscriber) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	subscribers, ok := b.subscribers[topic]
 	if !ok {
 		return
 	}
-
-	close(subscriber.Done)
-	delete(p.Subscribers, subscriberID)
-}
-
-func (p *Publisher) PublishMessage(message Message) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	for _, subscriber := range p.Subscribers {
-		select {
-		case subscriber.Events <- message:
-		case <-subscriber.Done:
+	for i, s := range subscribers {
+		if s == subscriber {
+			b.subscribers[topic] = append(subscribers[:i], subscribers[i+1:]...)
+			return
 		}
 	}
 }
 
-func main() {
-	// Create a wait group to synchronize the completion of the goroutines
-	var wg sync.WaitGroup
-
-	// Create a publisher
-	publisher := NewPublisher()
-
-	// Create subscriber 1
-	subscriber1 := Subscriber{
-		ID:     1,
-		Events: make(chan Message),
-		Done:   make(chan struct{}),
+// Publish sends a message to all subscribers of a specific topic
+func (b *Broker) Publish(msg Message) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	subscribers, ok := b.subscribers[msg.Topic]
+	if !ok {
+		return
 	}
-	publisher.AddSubscriber(subscriber1)
-
-	// Create subscriber 2
-	subscriber2 := Subscriber{
-		ID:     2,
-		Events: make(chan Message),
-		Done:   make(chan struct{}),
+	for _, subscriber := range subscribers {
+		subscriber.Channel <- msg.Data
 	}
-	publisher.AddSubscriber(subscriber2)
-
-	// Launch goroutines for subscribers
-	wg.Add(2)
-	go subscriberRoutine(&subscriber1, &wg)
-	go subscriberRoutine(&subscriber2, &wg)
-
-	// Publish messages
-	publisher.PublishMessage(Message{Content: "Hello, World!"})
-	publisher.PublishMessage(Message{Content: "How are you?"})
-
-	// Remove subscribers
-	publisher.RemoveSubscriber(subscriber1.ID)
-	publisher.RemoveSubscriber(subscriber2.ID)
-
-	// Wait for all goroutines to complete
-	wg.Wait()
 }
 
-func subscriberRoutine(subscriber *Subscriber, wg *sync.WaitGroup) {
-	defer wg.Done()
+func main() {
+	broker := NewBroker()
+	defer closeBrokerChannels(broker)
 
-	for {
-		select {
-		case message, ok := <-subscriber.Events:
-			if ok {
-				fmt.Printf("Subscriber %d: Received message: %s\n", subscriber.ID, message.Content)
-			} else {
-				fmt.Printf("Subscriber %d: Shutting down\n", subscriber.ID)
-				return
-			}
-		case <-subscriber.Done:
-			fmt.Printf("Subscriber %d: Shutting down\n", subscriber.ID)
-			return
+	subscriber1 := &Subscriber{ID: 1, Channel: make(chan interface{})}
+	subscriber2 := &Subscriber{ID: 2, Channel: make(chan interface{})}
+
+	broker.Subscribe("topic1", subscriber1)
+	broker.Subscribe("topic2", subscriber2)
+
+	go subscriber1.Update()
+	go subscriber2.Update()
+
+	broker.Publish(Message{Topic: "topic1", Data: "Hello, World!"})
+	broker.Publish(Message{Topic: "topic2", Data: "Greetings!"})
+
+	// Output:
+	// Subscriber 1 received message: Hello, World!
+	// Subscriber 2 received message: Greetings!
+}
+
+// closeBrokerChannels closes the channels of all subscribers
+func closeBrokerChannels(b *Broker) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	for _, subscribers := range b.subscribers {
+		for _, s := range subscribers {
+			close(s.Channel)
 		}
 	}
 }
