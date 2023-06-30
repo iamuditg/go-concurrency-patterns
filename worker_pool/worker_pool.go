@@ -30,12 +30,6 @@ func main() {
 	}
 	close(taskCh)
 
-	for _, task := range tasks {
-		taskCh <- task
-	}
-
-	close(taskCh)
-
 	// Wait for all workers to complete
 	wg.Wait()
 }
